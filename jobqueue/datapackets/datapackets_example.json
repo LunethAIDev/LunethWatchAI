@@ -1,0 +1,26 @@
+[
+  {
+    "id": "pkt-001",
+    "timestamp": 1720215600000,
+    "source": "module-A",
+    "destination": "module-B",
+    "payload": {
+      "event": "transfer",
+      "amount": 1500,
+      "token": "USDC"
+    }
+  },
+  {
+    "id": "pkt-002",
+    "timestamp": 1720215660000,
+    "source": "module-B",
+    "destination": "analytics",
+    "payload": {
+      "event": "balance_update",
+      "balances": {
+        "SOL": 12.345,
+        "RAY": 250.0
+      }
+    }
+  }
+]

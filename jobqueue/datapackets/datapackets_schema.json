@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataPacket",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique packet identifier"
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Unix epoch milliseconds"
+    },
+    "source": {
+      "type": "string",
+      "description": "Origin address or module"
+    },
+    "destination": {
+      "type": "string",
+      "description": "Target address or module"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Arbitrary JSON payload",
+      "additionalProperties": true
+    }
+  },
+  "required": ["id", "timestamp", "source", "destination", "payload"],
+  "additionalProperties": false
+}

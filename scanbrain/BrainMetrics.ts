@@ -1,4 +1,7 @@
-import { ParsedConfirmedTransaction } from "@solana/web3.js"
+import {
+  ParsedConfirmedTransaction,
+  ParsedInstruction,
+} from "@solana/web3.js"
 
 export interface Metrics {
   totalVolume: number
@@ -10,24 +13,40 @@ export class BrainMetrics {
   compute(transactions: ParsedConfirmedTransaction[]): Metrics {
     const senders = new Set<string>()
     const receivers = new Set<string>()
-    let volume = 0
+    let totalVolume = 0
 
     for (const tx of transactions) {
-      const sig = tx.transaction.signatures[0]
-      for (const instr of tx.transaction.message.instructions as any[]) {
-        if (instr.program === "spl-token" && instr.parsed?.type === "transfer") {
-          const info = instr.parsed.info
-          senders.add(info.source)
-          receivers.add(info.destination)
-          volume += Number(info.amount)
+      const instructions = tx.transaction.message.instructions as ParsedInstruction[]
+
+      for (const instr of instructions) {
+        // Ensure it's a parsed SPL-token transfer
+        if (
+          instr.program !== "spl-token" ||
+          instr.parsed?.type !== "transfer" ||
+          !instr.parsed?.info
+        ) {
+          continue
+        }
+
+        const { source, destination, amount } = instr.parsed.info
+
+        // Defensive checks
+        if (typeof source !== "string" || typeof destination !== "string") continue
+
+        senders.add(source)
+        receivers.add(destination)
+
+        const numericAmount = Number(amount)
+        if (!isNaN(numericAmount)) {
+          totalVolume += numericAmount
         }
       }
     }
 
     return {
-      totalVolume: volume,
+      totalVolume,
       uniqueSenders: senders.size,
-      uniqueReceivers: receivers.size
+      uniqueReceivers: receivers.size,
     }
   }
 }

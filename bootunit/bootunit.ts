@@ -9,10 +9,6 @@ const schema = z.object({
 
 type Config = z.infer<typeof schema>
 
-/**
- * BootUnit handles configuration parsing, app instantiation,
- * healthcheck endpoint, server startup, and graceful shutdown.
- */
 export class BootUnit {
   public readonly port: number
   public readonly rpcUrl: string
@@ -20,20 +16,22 @@ export class BootUnit {
   private server?: ReturnType<Application["listen"]>
 
   constructor(env: NodeJS.ProcessEnv = process.env) {
-    const cfg = schema.parse(env)
+    let cfg: Config
+    try {
+      cfg = schema.parse(env)
+    } catch (err) {
+      console.error("❌ Invalid configuration:", err)
+      process.exit(1)
+    }
+
     this.port = cfg.PORT
     this.rpcUrl = cfg.SOLANA_RPC_URL
     this.logLevel = cfg.LOG_LEVEL
   }
 
-  /**
-   * Starts the Express app created by `appFactory`,
-   * adds a /health endpoint, and handles graceful shutdown.
-   */
   public start(appFactory: (rpcUrl: string) => Application): void {
     const app = appFactory(this.rpcUrl)
 
-    // default health endpoint
     app.get("/health", (_req: Request, res: Response) => {
       res.status(200).json({ status: "ok", time: Date.now() })
     })
@@ -41,27 +39,35 @@ export class BootUnit {
     try {
       this.server = app.listen(this.port, () => {
         console.log(
-          `▶️ Listening on port ${this.port} (logLevel=${this.logLevel}, rpcUrl=${this.rpcUrl})`
+          `🚀 Server running at http://localhost:${this.port} | logLevel=${this.logLevel} | rpcUrl=${this.rpcUrl}`
         )
+      })
+
+      this.server.once("error", (err) => {
+        console.error("❌ Server startup error:", err)
+        process.exit(1)
       })
     } catch (err) {
       console.error("❌ Failed to start server:", err)
       process.exit(1)
     }
 
-    // Graceful shutdown
     const shutdown = () => {
       if (!this.server) return
-      console.log("🛑 Shutting down...")
+      console.log("🛑 Gracefully shutting down server...")
       this.server.close(() => {
-        console.log("✅ Shutdown complete")
+        console.log("✅ Server closed successfully")
         process.exit(0)
       })
-      // force exit after 10s
-      setTimeout(() => process.exit(1), 10_000)
+
+      // Force shutdown after 10s
+      setTimeout(() => {
+        console.warn("⏱ Force exiting after timeout")
+        process.exit(1)
+      }, 10_000)
     }
 
-    process.on("SIGINT", shutdown)
-    process.on("SIGTERM", shutdown)
+    process.once("SIGINT", shutdown)
+    process.once("SIGTERM", shutdown)
   }
 }

@@ -16,35 +16,20 @@ export interface ShiftEvent {
 }
 
 export interface FlowShiftOptions {
-  /** Max signatures to fetch (default 100) */
   limit?: number
-  /** Concurrency for RPC calls (default 5) */
   concurrency?: number
-  /** Ignore events before this timestamp (ms) */
   since?: number
 }
 
-/**
- * FlowShift tracks SPL-token transfer events for a given mint.
- */
 export class FlowShift {
   private conn: Connection
   private queue: PQueue
 
-  /**
-   * @param rpcUrl  Solana RPC endpoint
-   * @param opts    Default tracking options
-   */
   constructor(rpcUrl: string, private opts: FlowShiftOptions = {}) {
     this.conn = new Connection(rpcUrl, "confirmed")
     this.queue = new PQueue({ concurrency: opts.concurrency ?? 5 })
   }
 
-  /**
-   * Track transfer events for `mint`
-   * @param mint  SPL token mint address
-   * @param overrideOpts  Options to override defaults
-   */
   public async track(
     mint: string,
     overrideOpts: FlowShiftOptions = {}
@@ -52,13 +37,11 @@ export class FlowShift {
     const { limit = 100, since } = { ...this.opts, ...overrideOpts }
     const mintKey = new PublicKey(mint)
 
-    // 1) Fetch recent signatures
     const sigInfos: ConfirmedSignatureInfo[] =
       await this.conn.getSignaturesForAddress(mintKey, { limit })
 
     const events: ShiftEvent[] = []
 
-    // 2) Concurrently fetch & parse each transaction
     await Promise.all(
       sigInfos.map(info =>
         this.queue.add(async () => {
@@ -90,7 +73,6 @@ export class FlowShift {
       )
     )
 
-    // 3) Sort by timestamp descending
     return events.sort((a, b) => b.timestamp - a.timestamp)
   }
 }
